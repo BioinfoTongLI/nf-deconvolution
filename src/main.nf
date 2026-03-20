@@ -1,8 +1,8 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl=2
 
-// Load modules
-include { DECONVOLUTION_GPU; DECONVOLUTION_CPU } from './modules/Deconvolution.nf'
+// Load subworkflows
+include { DECONWOLF_DECONVOLUTION } from './subworkflows/local/deconvolution/main'
 
 
 
@@ -15,21 +15,8 @@ workflow {
                                 file(row.path,checkIfExists:true)) }
                 .set { input_files }
 
-        // Deconvolution
-        // GPU
-        deconvolution_gpu = DECONVOLUTION_GPU(input_files)
+        deconvolution = DECONWOLF_DECONVOLUTION(input_files)
 
-        // Catch failed GPU deconvolutions and rerun on CPU
-        input_files.join(deconvolution_gpu.deconvolved,remainder:true)
-                .filter { item -> item[2] == null }
-                .map { it -> tuple(it[0],it[1]) }
-                .set { failed_deconvolution }
-
-        // CPU
-        deconvolution_cpu = DECONVOLUTION_CPU(failed_deconvolution)
-
-        // combine results
-        deconvolution_gpu.deconvolved.mix(deconvolution_cpu.deconvolved)
-                .set { deconvolved_images } 
+        deconvolved_images = deconvolution.deconvolved_images
                         
 }
